@@ -60,7 +60,7 @@ def send_requests():
 
     tokens_with_region = fetch_tokens_from_api()
     if not tokens_with_region:
-        return jsonify({"error": "No tokens fetched from API"}), 500
+        return jsonify({"error": "No tokens fetched from API"}), 1000
 
     results = {"success": 0, "failed": 0}
     threads = []
