@@ -1,12 +1,12 @@
 from flask import Flask, request, jsonify
 import requests
 from byte import Encrypt_ID, encrypt_api
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 executor = ThreadPoolExecutor(max_workers=50)
 
-# قائمة الـUIDs التي تريد استخدامها فقط
+# الـ50 UID المسموحين لجلب التوكنات
 UIDS_TO_USE = [
     "4182940828","4182940823","4182940830","4182940837","4182940841",
     "4182940835","4182940827","4182940825","4182940843","4182940836",
@@ -22,19 +22,19 @@ UIDS_TO_USE = [
 
 def fetch_tokens():
     """جلب التوكنات من الرابط وتصفيتها حسب UIDS_TO_USE"""
-    response = requests.get("https://aauto-token.onrender.com/api/get_jwt")
-    if response.status_code == 200:
+    try:
+        response = requests.get("https://aauto-token.onrender.com/api/get_jwt", timeout=30)
+        response.raise_for_status()
         data = response.json()
         tokens = data.get("tokens", {})
         # فلترة التوكنات بحيث تكون فقط للعناصر التي بالـUIDS_TO_USE
-        filtered_tokens = {uid: tokens[uid] for uid in UIDS_TO_USE if uid in tokens}
-        return filtered_tokens
-    else:
+        return {uid: tokens[uid] for uid in UIDS_TO_USE if uid in tokens}
+    except Exception:
         return {}
 
-def send_request(token, uid):
-    uid = int(uid)
-    id_encrypted = Encrypt_ID(uid)
+def send_request(token, target_uid):
+    target_uid_int = int(target_uid)
+    id_encrypted = Encrypt_ID(target_uid_int)
     data0 = "08c8b5cfea1810" + id_encrypted + "18012008"
     data = bytes.fromhex(encrypt_api(data0))
 
@@ -50,31 +50,29 @@ def send_request(token, uid):
         'Content-Type': 'application/x-www-form-urlencoded',
     }
 
-    response = requests.post(url, headers=headers, data=data, verify=False)
-    if response.status_code == 200:
-        return {"status": "success", "message": "Friend request sent!"}
-    else:
-        return {"status": "failed", "code": response.status_code, "response": response.text}
+    try:
+        resp = requests.post(url, headers=headers, data=data, verify=False, timeout=10)
+        if resp.status_code == 200:
+            return {"token_uid": token[:20]+"...", "status": "success"}
+        else:
+            return {"token_uid": token[:20]+"...", "status": "failed", "code": resp.status_code}
+    except Exception as e:
+        return {"token_uid": token[:20]+"...", "status": "error", "error": str(e)}
 
 @app.route("/add_friend", methods=["GET"])
 def add_friend():
-    uid = request.args.get("uid")
-    if not uid:
-        return jsonify({"error": "Missing uid"}), 400
-
-    # فقط نفذ إذا كان uid ضمن القائمة المسموحة
-    if uid not in UIDS_TO_USE:
-        return jsonify({"error": "UID not allowed"}), 403
+    target_uid = request.args.get("uid")
+    if not target_uid:
+        return jsonify({"error": "Missing target uid"}), 400
 
     tokens = fetch_tokens()
-    token = tokens.get(uid)
-    if not token:
-        return jsonify({"error": "Token not found for this UID"}), 404
+    if not tokens:
+        return jsonify({"error": "No tokens found"}), 500
 
-    future = executor.submit(send_request, token, uid)
-    result = future.result()
+    futures = [executor.submit(send_request, token, target_uid) for token in tokens.values()]
+    results = [future.result() for future in as_completed(futures)]
 
-    return jsonify(result)
+    return jsonify({"target_uid": target_uid, "results": results, "total_requests": len(results)})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
