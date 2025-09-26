@@ -1,28 +1,12 @@
 from flask import Flask, request, jsonify
 import httpx
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 import threading
 import time
 
 app = Flask(__name__)
 lock = threading.Lock()
 MAX_SUCCESSFUL = 50  # عدد الطلبات الناجحة المطلوب
-
-# قائمة الـUIDs التي تريد استخدامها
-# قائمة الـUIDs التي تريد استخدامها
-UIDS_TO_USE = [
-    "4182940828","4182940823","4182940830","4182940837","4182940841",
-    "4182940835","4182940827","4182940825","4182940843","4182940836",
-    "4182940842","4182940831","4182940826","4182940824","4182940840",
-    "4182940832","4182940822","4182940833","4182940834","4182940829",
-    "4182943566","4182943556","4182943559","4182943562","4182943571",
-    "4182943572","4182943574","4182943568","4182943557","4182943569",
-    "4182943560","4182943570","4182943561","4182943573","4182943555",
-    "4182943563","4182943564","4182943565","4182943558","4182943567",
-    "4182944867","4182944869","4182944868","4182944871","4182944866",
-    "4182944877","4182944874","4182944880","4182944878","4182944873"
-]
-
 
 def send_friend_request(token, uid):
     url = f"https://add-friend-henna.vercel.app/add_friend?token={token}&uid={uid}"
@@ -48,15 +32,16 @@ def send_friend():
     except ValueError:
         return jsonify({"error": "player_id must be an integer"}), 400
 
-    # جلب التوكنات الخاصة بالـUIDs المحددة
+    # جلب أول 50 توكن من الرابط
     try:
         token_data = httpx.get("https://aauto-token.onrender.com/api/get_jwt", timeout=50).json()
         tokens_dict = token_data.get("tokens", {})
         if not tokens_dict:
             return jsonify({"error": "No tokens found"}), 500
 
-        # اختر فقط التوكنات للـUIDs الموجودة في القائمة
-        tokens = [tokens_dict[uid] for uid in UIDS_TO_USE if uid in tokens_dict]
+        # استخدم أول 50 توكن فقط
+        tokens = list(tokens_dict.values())[:50]
+
     except Exception as e:
         return jsonify({"error": f"Failed to fetch tokens: {e}"}), 500
 
