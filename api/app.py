@@ -12,7 +12,7 @@ def fetch_tokens_from_api():
         response.raise_for_status()
         data = response.json()
         tokens_dict = data.get("tokens", {})
-        tokens_list = [(uid, token) for uid, token in list(tokens_dict.items())[:500]]
+        tokens_list = [(uid, token) for uid, token in list(tokens_dict.items())[:1000]]
         return tokens_list
     except Exception as e:
         print(f"Error fetching tokens: {e}")
@@ -30,7 +30,7 @@ def send_friend_request(uid, region, token, results, lock, stop_event):
         "Authorization": f"Bearer {token}",
         "X-Unity-Version": "2018.4.11f1",
         "X-GA": "v1 1",
-        "ReleaseVersion": "OB49",
+        "ReleaseVersion": "OB50",
         "Content-Type": "application/x-www-form-urlencoded",
         "Content-Length": "16",
         "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 9; SM-N975F Build/PI)",
@@ -60,7 +60,7 @@ def send_requests():
 
     tokens_with_region = fetch_tokens_from_api()
     if not tokens_with_region:
-        return jsonify({"error": "No tokens fetched from API"}), 1000
+        return jsonify({"error": "No tokens fetched from API"}), 500
 
     results = {"success": 0, "failed": 0}
     threads = []
