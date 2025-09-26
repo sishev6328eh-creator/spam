@@ -4,7 +4,6 @@ import asyncio
 import httpx
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
-import threading
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -18,7 +17,7 @@ def fetch_tokens_from_api():
         response.raise_for_status()
         data = response.json()
         tokens = data.get("tokens", {})
-        tokens_limited = dict(list(tokens.items())[:100])  # أول 100 توكن
+        tokens_limited = dict(list(tokens.items())[:100])  # اول 100 توكن
         return tokens_limited
     except Exception as e:
         print(f"خطأ في جلب التوكنات من API: {e}")
@@ -76,7 +75,6 @@ async def async_add_fr(id, token):
         'Accept-Encoding': 'gzip'
     }
     data = bytes.fromhex(encrypt_api(f'08a7c4839f1e10{Encrypt_ID(id)}1801'))
-    
     async with httpx.AsyncClient(verify=False, timeout=60) as client:
         response = await client.post(url, headers=headers, data=data)
         if response.status_code == 400 and 'BR_FRIEND_NOT_SAME_REGION' in response.text:
@@ -90,8 +88,15 @@ async def async_add_fr(id, token):
         else:
             return False, response.text
 
-def send_requests_in_background(id):
+@app.route('/spam')
+def spam_route():
+    id = request.args.get('id')
+    if not id:
+        return "يرجى توفير معرف صحيح.", 400
+
     tokens = fetch_tokens_from_api()
+    tokens = dict(list(tokens.items())[:100])  # نأخذ أول 100 توكن فقط
+
     success_count = 0
 
     async def send_all():
@@ -108,20 +113,8 @@ def send_requests_in_background(id):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(send_all())
-    print(f"تم إرسال {success_count} طلب صداقة ناجح.")
 
-def generate(id):
-    yield f"بدء إرسال طلبات صداقة إلى المعرف {id}...\n"
-    thread = threading.Thread(target=send_requests_in_background, args=(id,))
-    thread.start()
-
-@app.route('/spam')
-def index():
-    id = request.args.get('id')
-    if id:
-        return Response(generate(id), content_type='text/plain')
-    else:
-        return "يرجى إدخال معرف صحيح."
+    return f"تم إرسال {success_count} طلب صداقة ناجح للمعرف {id}."
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8398, debug=True)
+    app.run()
