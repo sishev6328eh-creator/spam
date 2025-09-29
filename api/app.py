@@ -7,7 +7,7 @@ app = Flask(__name__)
 executor = ThreadPoolExecutor(max_workers=50)
 
 def fetch_tokens():
-    """جلب أول 100 توكن من الرابط"""
+    """جلب أول 100 توكن من الرابط مباشرة"""
     try:
         response = requests.get("https://aauto-token.onrender.com/api/get_jwt", timeout=30)
         response.raise_for_status()
@@ -57,6 +57,7 @@ def add_friend():
     if not tokens:
         return jsonify({"error": "No tokens found"}), 500
 
+    # إرسال الطلبات بالتوازي لكل التوكنات
     futures = [executor.submit(send_request, token, target_uid) for token in tokens.values()]
     results = [future.result() for future in as_completed(futures)]
 
