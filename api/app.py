@@ -6,30 +6,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 app = Flask(__name__)
 executor = ThreadPoolExecutor(max_workers=50)
 
-# الـ50 UID المسموحين لجلب التوكنات
-UIDS_TO_USE = [
-    "4182940828","4182940823","4182940830","4182940837","4182940841",
-    "4182940835","4182940827","4182940825","4182940843","4182940836",
-    "4182940842","4182940831","4182940826","4182940824","4182940840",
-    "4182940832","4182940822","4182940833","4182940834","4182940829",
-    "4182943566","4182943556","4182943559","4182943562","4182943571",
-    "4182943572","4182943574","4182943568","4182943557","4182943569",
-    "4182943560","4182943570","4182943561","4182943573","4182943555",
-    "4182943563","4182943564","4182943565","4182943558","4182943567",
-    "4182944867","4182944869","4182944868","4182944871","4182944866",
-    "4182944877","4182944874","4182944880","4182944878","4182944873"
-]
-
 def fetch_tokens():
-    """جلب التوكنات من الرابط وتصفيتها حسب UIDS_TO_USE"""
+    """جلب أول 100 توكن من الرابط"""
     try:
         response = requests.get("https://aauto-token.onrender.com/api/get_jwt", timeout=30)
         response.raise_for_status()
         data = response.json()
         tokens = data.get("tokens", {})
-        # فلترة التوكنات بحيث تكون فقط للعناصر التي بالـUIDS_TO_USE
-        return {uid: tokens[uid] for uid in UIDS_TO_USE if uid in tokens}
-    except Exception:
+        # أخذ أول 100 توكن فقط
+        first_100_tokens = dict(list(tokens.items())[:100])
+        return first_100_tokens
+    except Exception as e:
+        print("Error fetching tokens:", e)
         return {}
 
 def send_request(token, target_uid):
