@@ -6,16 +6,31 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 app = Flask(__name__)
 executor = ThreadPoolExecutor(max_workers=50)
 
+# قائمة الإيديات المطلوبة (50 ID)
+TARGET_IDS = [
+    4182940828, 4182940823, 4182940830, 4182940837, 4182940841,
+    4182940835, 4182940827, 4182940825, 4182940843, 4182940836,
+    4182940842, 4182940831, 4182940826, 4182940824, 4182940840,
+    4182940832, 4182940822, 4182940833, 4182940834, 4182940829,
+    4182943566, 4182943556, 4182943559, 4182943562, 4182943571,
+    4182943572, 4182943574, 4182943568, 4182943557, 4182943569,
+    4182943560, 4182943570, 4182943561, 4182943573, 4182943555,
+    4182943563, 4182943564, 4182943565, 4182943558, 4182943567,
+    4182944867, 4182944869, 4182944868, 4182944871, 4182944866,
+    4182944877, 4182944874, 4182944880, 4182944878, 4182944873,
+]
+
 def fetch_tokens():
-    """جلب أول 100 توكن من الرابط مباشرة"""
+    """جلب التوكنات للإيديات المطلوبة فقط"""
     try:
         response = requests.get("https://aauto-token.onrender.com/api/get_jwt", timeout=30)
         response.raise_for_status()
         data = response.json()
         tokens = data.get("tokens", {})
-        # أخذ أول 100 توكن فقط
-        first_100_tokens = dict(list(tokens.items())[:100])
-        return first_100_tokens
+
+        # فلترة فقط الإيديات اللي نحتاجها
+        filtered_tokens = {uid: tokens[str(uid)] for uid in TARGET_IDS if str(uid) in tokens}
+        return filtered_tokens
     except Exception as e:
         print("Error fetching tokens:", e)
         return {}
@@ -57,7 +72,7 @@ def add_friend():
     if not tokens:
         return jsonify({"error": "No tokens found"}), 500
 
-    # إرسال الطلبات بالتوازي لكل التوكنات
+    # إرسال الطلبات للتوكنات المفلترة فقط
     futures = [executor.submit(send_request, token, target_uid) for token in tokens.values()]
     results = [future.result() for future in as_completed(futures)]
 
