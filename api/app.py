@@ -23,7 +23,7 @@ TARGET_IDS = [
 def fetch_tokens():
     """جلب التوكنات للإيديات المطلوبة فقط"""
     try:
-        response = requests.get("https://aauto-token.onrender.com/api/get_jwt", timeout=30)
+        response = requests.get("https://auto-token-spmmm.onrender.com/api/get_jwt", timeout=30)
         response.raise_for_status()
         data = response.json()
         tokens = data.get("tokens", {})
